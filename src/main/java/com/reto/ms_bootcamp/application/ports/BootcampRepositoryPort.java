@@ -10,4 +10,5 @@ public interface BootcampRepositoryPort {
     Mono<Boolean> existsByNombre(String nombre);
     Mono<Long> count();
     Flux<Bootcamp> findAll(int page, int size, String sortBy, String direction);
+    Mono<Void> deleteById(Long id);
 }

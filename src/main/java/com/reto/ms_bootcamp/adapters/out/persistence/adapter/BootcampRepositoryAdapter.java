@@ -163,6 +163,17 @@ public class BootcampRepositoryAdapter implements BootcampRepositoryPort {
                 .build();
     }
 
+    @Override
+    public Mono<Void> deleteById(Long id) {
+        return databaseClient.sql("DELETE FROM bootcamp_capacidad WHERE bootcamp_id = :bootcampId")
+                .bind("bootcampId", id)
+                .fetch()
+                .rowsUpdated()
+                .then(bootcampR2dbcRepository.deleteById(id))
+                .then()
+                .as(transactionalOperator::transactional);
+    }
+
     private Bootcamp toDomain(BootcampEntity entity) {
         return Bootcamp.builder()
                 .id(entity.getId())
