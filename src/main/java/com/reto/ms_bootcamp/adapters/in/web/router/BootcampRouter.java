@@ -18,6 +18,7 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
 
+import static org.springframework.web.reactive.function.server.RequestPredicates.DELETE;
 import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 import static org.springframework.web.reactive.function.server.RequestPredicates.accept;
@@ -65,11 +66,28 @@ public class BootcampRouter {
 					@ApiResponse(responseCode = "502", description = "Error en servicio de capacidades")
 				}
 			)
+		),
+		@RouterOperation(
+			path = "/bootcamps/{id}",
+			produces = {MediaType.APPLICATION_JSON_VALUE},
+			method = RequestMethod.DELETE,
+			beanClass = BootcampHandler.class,
+			beanMethod = "deleteBootcamp",
+			operation = @Operation(
+				operationId = "deleteBootcamp",
+				summary = "Eliminar bootcamp",
+				tags = {"Bootcamps"},
+				responses = {
+					@ApiResponse(responseCode = "204", description = "Eliminado correctamente"),
+					@ApiResponse(responseCode = "404", description = "Bootcamp no encontrado")
+				}
+			)
 		)
 	})
 	public RouterFunction<ServerResponse> bootcampRoutes(BootcampHandler bootcampHandler) {
 		return RouterFunctions.route(POST("/bootcamps").and(accept(MediaType.APPLICATION_JSON)), bootcampHandler::createBootcamp)
-			.andRoute(GET("/bootcamps"), bootcampHandler::listBootcamps);
+			.andRoute(GET("/bootcamps"), bootcampHandler::listBootcamps)
+			.andRoute(DELETE("/bootcamps/{id}"), bootcampHandler::deleteBootcamp);
 	}
 }
 

@@ -3,7 +3,9 @@ package com.reto.ms_bootcamp.adapters.in.web.handler;
 import com.reto.ms_bootcamp.adapters.in.web.dto.request.CreateBootcampRequest;
 import com.reto.ms_bootcamp.adapters.in.web.mapper.BootcampMapper;
 import com.reto.ms_bootcamp.application.usecases.CreateBootcampUseCase;
+import com.reto.ms_bootcamp.application.usecases.DeleteBootcampUseCase;
 import com.reto.ms_bootcamp.domain.exceptions.BootcampDuplicateException;
+import com.reto.ms_bootcamp.domain.exceptions.BootcampNotFoundException;
 import com.reto.ms_bootcamp.domain.exceptions.BootcampValidationException;
 import com.reto.ms_bootcamp.domain.exceptions.CapacidadNotFoundException;
 import jakarta.validation.Validator;
@@ -18,13 +20,16 @@ import reactor.core.publisher.Mono;
 public class BootcampHandler {
     private final CreateBootcampUseCase createBootcampUseCase;
     private final com.reto.ms_bootcamp.application.usecases.ListBootcampsUseCase listBootcampsUseCase;
+    private final DeleteBootcampUseCase deleteBootcampUseCase;
     private final Validator validator;
 
     public BootcampHandler(CreateBootcampUseCase createBootcampUseCase, 
                           com.reto.ms_bootcamp.application.usecases.ListBootcampsUseCase listBootcampsUseCase,
+                          DeleteBootcampUseCase deleteBootcampUseCase,
                           Validator validator) {
         this.createBootcampUseCase = createBootcampUseCase;
         this.listBootcampsUseCase = listBootcampsUseCase;
+        this.deleteBootcampUseCase = deleteBootcampUseCase;
         this.validator = validator;
     }
 
@@ -76,6 +81,19 @@ public class BootcampHandler {
                         .bodyValue(response))
                 .onErrorResume(com.reto.ms_bootcamp.domain.exceptions.BootcampServiceException.class, error ->
                         ServerResponse.status(HttpStatus.BAD_GATEWAY)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(error.getMessage()))
+                .onErrorResume(error -> ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue("Error interno del servidor"));
+    }
+
+    public Mono<ServerResponse> deleteBootcamp(ServerRequest request) {
+        Long id = Long.parseLong(request.pathVariable("id"));
+        return deleteBootcampUseCase.execute(id)
+                .then(ServerResponse.noContent().build())
+                .onErrorResume(BootcampNotFoundException.class, error ->
+                        ServerResponse.status(HttpStatus.NOT_FOUND)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .bodyValue(error.getMessage()))
                 .onErrorResume(error -> ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
