@@ -47,11 +47,10 @@ class BootcampEndpointsIT {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.r2dbc.url", () -> 
-            String.format("r2dbc:mysql://%s:%d/bootcamp_db", 
-                mysql.getHost(), mysql.getFirstMappedPort()));
-        registry.add("spring.r2dbc.username", () -> mysql.getUsername());
-        registry.add("spring.r2dbc.password", () -> mysql.getPassword());
+        registry.add("spring.r2dbc.url", () ->
+                "r2dbc:mysql://" + mysql.getHost() + ":" + mysql.getMappedPort(3306) + "/bootcamp_db");
+        registry.add("spring.r2dbc.username", mysql::getUsername);
+        registry.add("spring.r2dbc.password", mysql::getPassword);
     }
 
     @BeforeEach

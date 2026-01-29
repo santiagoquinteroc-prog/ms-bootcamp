@@ -1,16 +1,17 @@
 package com.reto.ms_bootcamp.adapters.in.web;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.client.WireMock;
 import com.reto.ms_bootcamp.adapters.in.web.dto.request.CreateBootcampRequest;
 import com.reto.ms_bootcamp.adapters.in.web.dto.response.BootcampListResponse;
 import com.reto.ms_bootcamp.adapters.in.web.dto.response.BootcampListItemResponse;
-import org.junit.jupiter.api.AfterEach;
+import com.reto.ms_bootcamp.application.ports.CapacidadServicePort;
+import com.reto.ms_bootcamp.domain.Capacidad;
+import com.reto.ms_bootcamp.domain.Tecnologia;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -18,12 +19,15 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -40,51 +44,53 @@ class ListBootcampsIT {
     @Autowired
     private WebTestClient webTestClient;
 
-    private WireMockServer wireMockServer;
+    @MockBean
+    private CapacidadServicePort capacidadServicePort;
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.r2dbc.url", () -> 
-            String.format("r2dbc:mysql://%s:%d/bootcamp_db", 
-                mysql.getHost(), mysql.getFirstMappedPort()));
-        registry.add("spring.r2dbc.username", () -> mysql.getUsername());
-        registry.add("spring.r2dbc.password", () -> mysql.getPassword());
-        registry.add("ms.capacidad.url", () -> "http://localhost:8081");
+        registry.add("spring.r2dbc.url", () ->
+                "r2dbc:mysql://" + mysql.getHost() + ":" + mysql.getMappedPort(3306) + "/bootcamp_db");
+        registry.add("spring.r2dbc.username", mysql::getUsername);
+        registry.add("spring.r2dbc.password", mysql::getPassword);
     }
 
     @BeforeEach
     void setUp() {
-        wireMockServer = new WireMockServer(8081);
-        wireMockServer.start();
-        WireMock.configureFor("localhost", 8081);
-        
-        wireMockServer.stubFor(get(urlMatching("/capacidades/\\d+"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("{\"id\":1,\"nombre\":\"Capacidad Default\",\"tecnologias\":[]}")));
-    }
-
-    @AfterEach
-    void tearDown() {
-        if (wireMockServer != null) {
-            wireMockServer.stop();
-        }
+        when(capacidadServicePort.existsById(anyLong())).thenReturn(Mono.just(true));
+        when(capacidadServicePort.findById(anyLong())).thenAnswer(invocation -> {
+            Long id = invocation.getArgument(0);
+            return Mono.just(Capacidad.builder()
+                    .id(id)
+                    .nombre("Capacidad " + id)
+                    .tecnologias(Arrays.asList(
+                            Tecnologia.builder().id(id).nombre("Tecnologia " + id).build()
+                    ))
+                    .build());
+        });
     }
 
     @Test
     void shouldListBootcampsWithPagination() {
+        when(capacidadServicePort.findById(1L)).thenReturn(Mono.just(Capacidad.builder()
+                .id(1L)
+                .nombre("Capacidad 1")
+                .tecnologias(Arrays.asList(
+                        Tecnologia.builder().id(1L).nombre("Java").build(),
+                        Tecnologia.builder().id(2L).nombre("Spring").build()
+                ))
+                .build()));
+        when(capacidadServicePort.findById(2L)).thenReturn(Mono.just(Capacidad.builder()
+                .id(2L)
+                .nombre("Capacidad 2")
+                .tecnologias(Arrays.asList(
+                        Tecnologia.builder().id(2L).nombre("Spring").build(),
+                        Tecnologia.builder().id(3L).nombre("React").build()
+                ))
+                .build()));
+
         createTestBootcamp("Bootcamp A", Arrays.asList(1L, 2L));
         createTestBootcamp("Bootcamp B", Arrays.asList(1L));
-
-        stubCapacidad(1L, "Capacidad 1", Arrays.asList(
-            createTecnologiaJson(1L, "Java"),
-            createTecnologiaJson(2L, "Spring")
-        ));
-        stubCapacidad(2L, "Capacidad 2", Arrays.asList(
-            createTecnologiaJson(2L, "Spring"),
-            createTecnologiaJson(3L, "React")
-        ));
 
         webTestClient.get()
                 .uri("/bootcamps?page=0&size=10")
@@ -101,42 +107,89 @@ class ListBootcampsIT {
 
     @Test
     void shouldOrderByNombreAsc() {
-        createTestBootcamp("Z Bootcamp", Arrays.asList(1L));
-        createTestBootcamp("A Bootcamp", Arrays.asList(1L));
+        when(capacidadServicePort.findById(1L)).thenReturn(Mono.just(Capacidad.builder()
+                .id(1L)
+                .nombre("Capacidad 1")
+                .tecnologias(Arrays.asList(Tecnologia.builder().id(1L).nombre("Java").build()))
+                .build()));
 
-        stubCapacidad(1L, "Capacidad 1", Arrays.asList(createTecnologiaJson(1L, "Java")));
+        createTestBootcamp("ZZZ Bootcamp", Arrays.asList(1L));
+        createTestBootcamp("AAA Bootcamp", Arrays.asList(1L));
 
         webTestClient.get()
-                .uri("/bootcamps?sortBy=nombre&direction=asc")
+                .uri("/bootcamps?sortBy=nombre&direction=asc&size=20")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(BootcampListResponse.class)
                 .value(response -> {
                     List<BootcampListItemResponse> items = response.getItems();
-                    if (items.size() >= 2) {
-                        assert items.get(0).getNombre().compareTo(items.get(1).getNombre()) <= 0;
+                    boolean foundAAA = false;
+                    boolean foundZZZ = false;
+                    int aaaIndex = -1;
+                    int zzzIndex = -1;
+                    
+                    for (int i = 0; i < items.size(); i++) {
+                        String nombre = items.get(i).getNombre();
+                        if ("AAA Bootcamp".equals(nombre)) {
+                            foundAAA = true;
+                            aaaIndex = i;
+                        }
+                        if ("ZZZ Bootcamp".equals(nombre)) {
+                            foundZZZ = true;
+                            zzzIndex = i;
+                        }
+                    }
+                    
+                    if (foundAAA && foundZZZ) {
+                        assert aaaIndex < zzzIndex : "AAA Bootcamp debe aparecer antes que ZZZ Bootcamp en orden ascendente";
+                    }
+                    
+                    for (int i = 0; i < items.size() - 1; i++) {
+                        String nombre1 = items.get(i).getNombre();
+                        String nombre2 = items.get(i + 1).getNombre();
+                        assert nombre1.compareToIgnoreCase(nombre2) <= 0 
+                            : String.format("Los items deben estar ordenados ascendentemente: %s debe estar antes que %s", nombre1, nombre2);
                     }
                 });
     }
 
     @Test
     void shouldOrderByCantidadCapacidadesDesc() {
-        createTestBootcamp("Bootcamp 1", Arrays.asList(1L, 2L, 3L));
-        createTestBootcamp("Bootcamp 2", Arrays.asList(1L));
-
-        stubCapacidad(1L, "Capacidad 1", Arrays.asList(createTecnologiaJson(1L, "Java")));
-        stubCapacidad(2L, "Capacidad 2", Arrays.asList(createTecnologiaJson(2L, "Spring")));
-        stubCapacidad(3L, "Capacidad 3", Arrays.asList(createTecnologiaJson(3L, "React")));
+        createTestBootcamp("Bootcamp Many", Arrays.asList(1L, 2L, 3L));
+        createTestBootcamp("Bootcamp Few", Arrays.asList(1L));
 
         webTestClient.get()
-                .uri("/bootcamps?sortBy=cantidadCapacidades&direction=desc")
+                .uri("/bootcamps?sortBy=cantidadCapacidades&direction=desc&size=20")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(BootcampListResponse.class)
                 .value(response -> {
                     List<BootcampListItemResponse> items = response.getItems();
-                    if (items.size() >= 2) {
-                        assert items.get(0).getCantidadCapacidades() >= items.get(1).getCantidadCapacidades();
+                    boolean foundMany = false;
+                    boolean foundFew = false;
+                    int manyIndex = -1;
+                    int fewIndex = -1;
+                    
+                    for (int i = 0; i < items.size(); i++) {
+                        String nombre = items.get(i).getNombre();
+                        if ("Bootcamp Many".equals(nombre)) {
+                            foundMany = true;
+                            manyIndex = i;
+                        }
+                        if ("Bootcamp Few".equals(nombre)) {
+                            foundFew = true;
+                            fewIndex = i;
+                        }
+                    }
+                    
+                    if (foundMany && foundFew) {
+                        assert manyIndex < fewIndex : "Bootcamp Many debe aparecer antes que Bootcamp Few en orden descendente";
+                    }
+                    
+                    for (int i = 0; i < items.size() - 1; i++) {
+                        assert items.get(i).getCantidadCapacidades() >= items.get(i + 1).getCantidadCapacidades()
+                            : String.format("Los items deben estar ordenados descendentemente por cantidad: %d debe ser >= %d", 
+                                items.get(i).getCantidadCapacidades(), items.get(i + 1).getCantidadCapacidades());
                     }
                 });
     }
@@ -158,22 +211,5 @@ class ListBootcampsIT {
                 .expectStatus().isCreated();
     }
 
-    private void stubCapacidad(Long id, String nombre, List<String> tecnologiasJson) {
-        String tecnologiasArray = String.join(",", tecnologiasJson);
-        String responseBody = String.format(
-            "{\"id\":%d,\"nombre\":\"%s\",\"tecnologias\":[%s]}",
-            id, nombre, tecnologiasArray
-        );
-
-        wireMockServer.stubFor(get(urlEqualTo("/capacidades/" + id))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(responseBody)));
-    }
-
-    private String createTecnologiaJson(Long id, String nombre) {
-        return String.format("{\"id\":%d,\"nombre\":\"%s\"}", id, nombre);
-    }
 }
 
