@@ -211,5 +211,88 @@ class BootcampEndpointsIT {
                 .exchange()
                 .expectStatus().isNotFound();
     }
+
+    @Test
+    void shouldDeleteBootcamp() {
+        String uniqueNombre = "Bootcamp To Delete " + System.currentTimeMillis();
+        CreateBootcampRequest request = new CreateBootcampRequest(
+                uniqueNombre,
+                "Descripción para eliminar",
+                LocalDate.of(2026, 2, 10),
+                8,
+                Arrays.asList(1L, 2L)
+        );
+
+        BootcampResponse created = webTestClient.post()
+                .uri("/bootcamps")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(BootcampResponse.class)
+                .returnResult()
+                .getResponseBody();
+
+        assert created != null;
+        Long bootcampId = created.getId();
+
+        webTestClient.delete()
+                .uri("/bootcamps/" + bootcampId)
+                .exchange()
+                .expectStatus().isNoContent();
+
+        webTestClient.delete()
+                .uri("/bootcamps/" + bootcampId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void shouldReturn404WhenDeletingNonExistentBootcamp() {
+        webTestClient.delete()
+                .uri("/bootcamps/99999")
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody(String.class)
+                .value(errorMessage -> {
+                    assert errorMessage.contains("99999") || errorMessage.contains("no encontrado");
+                });
+    }
+
+    @Test
+    void shouldDeleteBootcampAndRelations() {
+        String uniqueNombre = "Bootcamp With Relations " + System.currentTimeMillis();
+        CreateBootcampRequest request = new CreateBootcampRequest(
+                uniqueNombre,
+                "Test relaciones",
+                LocalDate.of(2026, 2, 10),
+                8,
+                Arrays.asList(1L, 2L, 3L)
+        );
+
+        BootcampResponse created = webTestClient.post()
+                .uri("/bootcamps")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(BootcampResponse.class)
+                .returnResult()
+                .getResponseBody();
+
+        assert created != null;
+        Long bootcampId = created.getId();
+        assert created.getCapacidadIds().size() == 3;
+
+        webTestClient.delete()
+                .uri("/bootcamps/" + bootcampId)
+                .exchange()
+                .expectStatus().isNoContent();
+
+        webTestClient.delete()
+                .uri("/bootcamps/" + bootcampId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
 }
 
