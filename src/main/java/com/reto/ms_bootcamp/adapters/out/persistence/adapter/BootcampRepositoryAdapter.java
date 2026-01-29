@@ -88,6 +88,71 @@ public class BootcampRepositoryAdapter implements BootcampRepositoryPort {
                 .hasElement();
     }
 
+    @Override
+    public Mono<Long> count() {
+        return databaseClient.sql("SELECT COUNT(*) FROM bootcamp")
+                .map((row, metadata) -> row.get(0, Long.class))
+                .one();
+    }
+
+    @Override
+    public Flux<Bootcamp> findAll(int page, int size, String sortBy, String direction) {
+        if ("cantidadCapacidades".equals(sortBy)) {
+            String sql = "SELECT b.*, COUNT(bc.capacidad_id) as cantidad_capacidades " +
+                    "FROM bootcamp b " +
+                    "LEFT JOIN bootcamp_capacidad bc ON b.id = bc.bootcamp_id " +
+                    "GROUP BY b.id " +
+                    "ORDER BY cantidad_capacidades " + (("desc".equalsIgnoreCase(direction)) ? "DESC" : "ASC") + " " +
+                    "LIMIT :size OFFSET :offset";
+            return databaseClient.sql(sql)
+                    .bind("size", size)
+                    .bind("offset", page * size)
+                    .map((row, metadata) -> {
+                        BootcampEntity entity = BootcampEntity.builder()
+                                .id(row.get("id", Long.class))
+                                .nombre(row.get("nombre", String.class))
+                                .descripcion(row.get("descripcion", String.class))
+                                .fechaLanzamiento(row.get("fecha_lanzamiento", java.time.LocalDate.class))
+                                .duracionSemanas(row.get("duracion_semanas", Integer.class))
+                                .build();
+                        return toDomain(entity);
+                    })
+                    .all()
+                    .flatMap(bootcamp -> bootcampCapacidadR2dbcRepository.findByBootcampId(bootcamp.getId())
+                            .map(BootcampCapacidadEntity::getCapacidadId)
+                            .collectList()
+                            .map(capacidadIds -> {
+                                bootcamp.setCapacidadIds(capacidadIds);
+                                return bootcamp;
+                            }));
+        } else {
+            String orderBy = "nombre";
+            String sql = "SELECT * FROM bootcamp ORDER BY " + orderBy + " " + 
+                    (("desc".equalsIgnoreCase(direction)) ? "DESC" : "ASC") + " LIMIT :size OFFSET :offset";
+            return databaseClient.sql(sql)
+                    .bind("size", size)
+                    .bind("offset", page * size)
+                    .map((row, metadata) -> {
+                        BootcampEntity entity = BootcampEntity.builder()
+                                .id(row.get("id", Long.class))
+                                .nombre(row.get("nombre", String.class))
+                                .descripcion(row.get("descripcion", String.class))
+                                .fechaLanzamiento(row.get("fecha_lanzamiento", java.time.LocalDate.class))
+                                .duracionSemanas(row.get("duracion_semanas", Integer.class))
+                                .build();
+                        return toDomain(entity);
+                    })
+                    .all()
+                    .flatMap(bootcamp -> bootcampCapacidadR2dbcRepository.findByBootcampId(bootcamp.getId())
+                            .map(BootcampCapacidadEntity::getCapacidadId)
+                            .collectList()
+                            .map(capacidadIds -> {
+                                bootcamp.setCapacidadIds(capacidadIds);
+                                return bootcamp;
+                            }));
+        }
+    }
+
     private BootcampEntity toEntity(Bootcamp bootcamp) {
         return BootcampEntity.builder()
                 .id(bootcamp.getId())

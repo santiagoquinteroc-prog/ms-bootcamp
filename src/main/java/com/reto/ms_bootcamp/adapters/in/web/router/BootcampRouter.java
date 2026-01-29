@@ -18,6 +18,7 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
 
+import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 import static org.springframework.web.reactive.function.server.RequestPredicates.accept;
 
@@ -47,10 +48,28 @@ public class BootcampRouter {
 					@ApiResponse(responseCode = "409", description = "Nombre duplicado")
 				}
 			)
+		),
+		@RouterOperation(
+			path = "/bootcamps",
+			produces = {MediaType.APPLICATION_JSON_VALUE},
+			method = RequestMethod.GET,
+			beanClass = BootcampHandler.class,
+			beanMethod = "listBootcamps",
+			operation = @Operation(
+				operationId = "listBootcamps",
+				summary = "Listar bootcamps",
+				tags = {"Bootcamps"},
+				responses = {
+					@ApiResponse(responseCode = "200", description = "OK",
+						content = @Content(schema = @Schema(implementation = com.reto.ms_bootcamp.adapters.in.web.dto.response.BootcampListResponse.class))),
+					@ApiResponse(responseCode = "502", description = "Error en servicio de capacidades")
+				}
+			)
 		)
 	})
 	public RouterFunction<ServerResponse> bootcampRoutes(BootcampHandler bootcampHandler) {
-		return RouterFunctions.route(POST("/bootcamps").and(accept(MediaType.APPLICATION_JSON)), bootcampHandler::createBootcamp);
+		return RouterFunctions.route(POST("/bootcamps").and(accept(MediaType.APPLICATION_JSON)), bootcampHandler::createBootcamp)
+			.andRoute(GET("/bootcamps"), bootcampHandler::listBootcamps);
 	}
 }
 
