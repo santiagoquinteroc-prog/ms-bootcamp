@@ -17,10 +17,14 @@ import reactor.core.publisher.Mono;
 @Component
 public class BootcampHandler {
     private final CreateBootcampUseCase createBootcampUseCase;
+    private final com.reto.ms_bootcamp.application.usecases.ListBootcampsUseCase listBootcampsUseCase;
     private final Validator validator;
 
-    public BootcampHandler(CreateBootcampUseCase createBootcampUseCase, Validator validator) {
+    public BootcampHandler(CreateBootcampUseCase createBootcampUseCase, 
+                          com.reto.ms_bootcamp.application.usecases.ListBootcampsUseCase listBootcampsUseCase,
+                          Validator validator) {
         this.createBootcampUseCase = createBootcampUseCase;
+        this.listBootcampsUseCase = listBootcampsUseCase;
         this.validator = validator;
     }
 
@@ -53,6 +57,25 @@ public class BootcampHandler {
                                 .bodyValue(error.getMessage()))
                 .onErrorResume(BootcampDuplicateException.class, error ->
                         ServerResponse.status(HttpStatus.CONFLICT)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(error.getMessage()))
+                .onErrorResume(error -> ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue("Error interno del servidor"));
+    }
+
+    public Mono<ServerResponse> listBootcamps(ServerRequest request) {
+        int page = request.queryParam("page").map(Integer::parseInt).orElse(0);
+        int size = request.queryParam("size").map(Integer::parseInt).orElse(10);
+        String sortBy = request.queryParam("sortBy").orElse("nombre");
+        String direction = request.queryParam("direction").orElse("asc");
+
+        return listBootcampsUseCase.execute(page, size, sortBy, direction)
+                .flatMap(response -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(response))
+                .onErrorResume(com.reto.ms_bootcamp.domain.exceptions.BootcampServiceException.class, error ->
+                        ServerResponse.status(HttpStatus.BAD_GATEWAY)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .bodyValue(error.getMessage()))
                 .onErrorResume(error -> ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
