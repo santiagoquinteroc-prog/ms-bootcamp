@@ -8,20 +8,28 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table("bootcamps")
+@Table("bootcamp")
 public class BootcampEntity {
     @Id
     @Column("id")
     private Long id;
 
-    @Column("name")
-    private String name;
+    @Column("nombre")
+    private String nombre;
 
-    @Column("description")
-    private String description;
+    @Column("descripcion")
+    private String descripcion;
+
+    @Column("fecha_lanzamiento")
+    private LocalDate fechaLanzamiento;
+
+    @Column("duracion_semanas")
+    private Integer duracionSemanas;
 }
 

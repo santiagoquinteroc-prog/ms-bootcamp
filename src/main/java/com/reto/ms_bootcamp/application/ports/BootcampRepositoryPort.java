@@ -6,5 +6,6 @@ import reactor.core.publisher.Mono;
 public interface BootcampRepositoryPort {
     Mono<Bootcamp> save(Bootcamp bootcamp);
     Mono<Bootcamp> findById(Long id);
+    Mono<Boolean> existsByNombre(String nombre);
 }
 

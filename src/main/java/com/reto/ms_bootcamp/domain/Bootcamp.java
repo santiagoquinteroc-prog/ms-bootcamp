@@ -5,13 +5,19 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Bootcamp {
     private Long id;
-    private String name;
-    private String description;
+    private String nombre;
+    private String descripcion;
+    private LocalDate fechaLanzamiento;
+    private Integer duracionSemanas;
+    private List<Long> capacidadIds;
 }
 
