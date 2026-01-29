@@ -1,3 +1,14 @@
 spring:
   application:
     name: ms-bootcamp
+  r2dbc:
+    url: r2dbc:mysql://localhost:3309/bootcamp_db
+    username: app
+    password: app
+
+server:
+  port: 8082
+
+ms:
+  capacidad:
+    url: ${MS_CAPACIDAD_URL:http://localhost:8081}
