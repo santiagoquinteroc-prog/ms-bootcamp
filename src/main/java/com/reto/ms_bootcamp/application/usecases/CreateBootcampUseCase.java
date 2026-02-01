@@ -2,6 +2,7 @@ package com.reto.ms_bootcamp.application.usecases;
 
 import com.reto.ms_bootcamp.application.ports.BootcampRepositoryPort;
 import com.reto.ms_bootcamp.application.ports.CapacidadServicePort;
+import com.reto.ms_bootcamp.application.ports.ReporteServicePort;
 import com.reto.ms_bootcamp.domain.Bootcamp;
 import com.reto.ms_bootcamp.domain.exceptions.BootcampDuplicateException;
 import com.reto.ms_bootcamp.domain.exceptions.BootcampValidationException;
@@ -15,17 +16,29 @@ import java.util.List;
 public class CreateBootcampUseCase {
     private final BootcampRepositoryPort bootcampRepositoryPort;
     private final CapacidadServicePort capacidadServicePort;
+    private final ReporteServicePort reporteServicePort;
 
-    public CreateBootcampUseCase(BootcampRepositoryPort bootcampRepositoryPort, CapacidadServicePort capacidadServicePort) {
+    public CreateBootcampUseCase(BootcampRepositoryPort bootcampRepositoryPort, 
+                                CapacidadServicePort capacidadServicePort,
+                                ReporteServicePort reporteServicePort) {
         this.bootcampRepositoryPort = bootcampRepositoryPort;
         this.capacidadServicePort = capacidadServicePort;
+        this.reporteServicePort = reporteServicePort;
     }
 
     public Mono<Bootcamp> execute(Bootcamp bootcamp) {
         return validateNombreUnico(bootcamp.getNombre())
                 .then(validateCapacidades(bootcamp.getCapacidadIds()))
                 .then(validateCapacidadesExisten(bootcamp.getCapacidadIds()))
-                .then(bootcampRepositoryPort.save(bootcamp));
+                .then(bootcampRepositoryPort.save(bootcamp))
+                .doOnSuccess(savedBootcamp -> 
+                    reporteServicePort.enviarBootcampCreado(savedBootcamp)
+                        .subscribe(
+                            null,
+                            error -> {},
+                            () -> {}
+                        )
+                );
     }
 
     private Mono<Void> validateNombreUnico(String nombre) {

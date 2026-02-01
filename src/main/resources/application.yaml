@@ -12,3 +12,5 @@ server:
 ms:
   capacidad:
     url: ${MS_CAPACIDAD_URL:http://localhost:8081}
+  reporte:
+    url: ${MS_REPORTE_URL:http://localhost:8084}
