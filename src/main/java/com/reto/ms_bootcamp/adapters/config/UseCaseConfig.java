@@ -2,6 +2,7 @@ package com.reto.ms_bootcamp.adapters.config;
 
 import com.reto.ms_bootcamp.application.ports.BootcampRepositoryPort;
 import com.reto.ms_bootcamp.application.ports.CapacidadServicePort;
+import com.reto.ms_bootcamp.application.ports.ReporteServicePort;
 import com.reto.ms_bootcamp.application.usecases.CreateBootcampUseCase;
 import com.reto.ms_bootcamp.application.usecases.DeleteBootcampUseCase;
 import com.reto.ms_bootcamp.application.usecases.ListBootcampsUseCase;
@@ -13,8 +14,9 @@ public class UseCaseConfig {
     @Bean
     public CreateBootcampUseCase createBootcampUseCase(
             BootcampRepositoryPort bootcampRepositoryPort,
-            CapacidadServicePort capacidadServicePort) {
-        return new CreateBootcampUseCase(bootcampRepositoryPort, capacidadServicePort);
+            CapacidadServicePort capacidadServicePort,
+            ReporteServicePort reporteServicePort) {
+        return new CreateBootcampUseCase(bootcampRepositoryPort, capacidadServicePort, reporteServicePort);
     }
 
     @Bean
